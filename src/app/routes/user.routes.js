@@ -184,105 +184,10 @@ const verifyOtp = asyncHandler(async (req, res) => {
 });
 
 // Route 4: Register User
-// const registerUser = asyncHandler(async (req, res) => {
-// 	const { fullName, email, username, phone, password } = req.body;
-// 	//console.log("email: ", email);
-
-// 	if (
-// 		[fullName, email, username, password, phone].some(
-// 			(field) => field?.trim() === ""
-// 		)
-// 	) {
-// 		throw new ApiError(400, "All fields are required");
-// 	}
-
-// 	const existedUser = await User.findOne({
-// 		$or: [{ email }, { phone }],
-// 	});
-
-// 	if (existedUser) {
-// 		throw new ApiError(409, "User already exists");
-// 	}
-// 	//console.log(req.files);
-// 	const existedUsername = await User.findOne({
-// 		username,
-// 	});
-
-// 	if (existedUsername) {
-// 		const userCount = await User.countDocuments();
-// 		const serialNumber = userCount + 1;
-// 		const newUsername = `${username.toLowerCase()}-${serialNumber}`;
-// 		const user = await User.create({
-// 			fullName: fullName,
-// 			userPic: "",
-// 			userId: `SD${serialNumber}`,
-// 			email: email,
-// 			phone: phone,
-// 			password: password,
-// 			username: newUsername.toString(),
-// 			gender: "",
-// 		});
-// 		const createdUser = await User.findById(user._id).select(
-// 			"-password -refreshToken"
-// 		);
-
-// 		if (!createdUser) {
-// 			throw new ApiError(
-// 				500,
-// 				"Something went wrong while registering the user"
-// 			);
-// 		}
-
-// 		return res
-// 			.status(200)
-// 			.json(
-// 				new ApiResponse(
-// 					200,
-// 					createdUser,
-// 					"User registered Successfully"
-// 				)
-// 			);
-// 	}
-// 	const userCount = await User.countDocuments();
-// 	const serialNumber = userCount + 1;
-// 	const user = await User.create({
-// 		fullName: fullName,
-// 		userPic: "",
-// 		userId: `SD${serialNumber}`,
-// 		email: email,
-// 		phone: phone,
-// 		password: password,
-// 		username: username,
-// 		gender: "",
-// 	});
-
-// 	const createdUser = await User.findById(user._id).select(
-// 		"-password -refreshToken"
-// 	);
-
-// 	if (!createdUser) {
-// 		throw new ApiError(
-// 			500,
-// 			"Something went wrong while registering the user"
-// 		);
-// 	}
-
-// 	return res
-// 		.status(200)
-// 		.json(
-// 			new ApiResponse(
-// 				200,
-// 				createdUser,
-// 				"User registered Successfully"
-// 			)
-// 		);
-// });
-
-
 const registerUser = asyncHandler(async (req, res) => {
 	const { fullName, email, username, phone, password } = req.body;
+	//console.log("email: ", email);
 
-	// Validate required fields
 	if (
 		[fullName, email, username, password, phone].some(
 			(field) => field?.trim() === ""
@@ -291,78 +196,173 @@ const registerUser = asyncHandler(async (req, res) => {
 		throw new ApiError(400, "All fields are required");
 	}
 
-	// Check if the user already exists
 	const existedUser = await User.findOne({
 		$or: [{ email }, { phone }],
 	});
+
 	if (existedUser) {
 		throw new ApiError(409, "User already exists");
 	}
+	//console.log(req.files);
+	const existedUsername = await User.findOne({
+		username,
+	});
 
-	// Check for username conflict
-	const existedUsername = await User.findOne({ username });
-	let finalUsername = username;
 	if (existedUsername) {
 		const userCount = await User.countDocuments();
 		const serialNumber = userCount + 1;
-		finalUsername = `${username.toLowerCase()}-${serialNumber}`;
-	}
+		const newUsername = `${username.toLowerCase()}-${serialNumber}`;
+		const user = await User.create({
+			fullName: fullName,
+			userPic: "",
+			userId: `SD${serialNumber}`,
+			email: email,
+			phone: phone,
+			password: password,
+			username: newUsername.toString(),
+			gender: "",
+		});
+		const createdUser = await User.findById(user._id).select(
+			"-password -refreshToken"
+		);
 
-	// Generate unique userId
+		if (!createdUser) {
+			throw new ApiError(
+				500,
+				"Something went wrong while registering the user"
+			);
+		}
+
+		return res
+			.status(200)
+			.json(
+				new ApiResponse(
+					200,
+					createdUser,
+					"User registered Successfully"
+				)
+			);
+	}
 	const userCount = await User.countDocuments();
 	const serialNumber = userCount + 1;
-
-	// Create the user
 	const user = await User.create({
-		fullName,
-		email,
-		phone,
-		password,
-		username: finalUsername,
-		userId: `SD${serialNumber}`,
+		fullName: fullName,
 		userPic: "",
+		userId: `SD${serialNumber}`,
+		email: email,
+		phone: phone,
+		password: password,
+		username: username,
 		gender: "",
 	});
 
-	// Send verification email
-	const transporter = nodemailer.createTransport({
-		service: "Gmail",
-		auth: {
-			user: process.env.EMAIL_USER,
-			pass: process.env.EMAIL_PASSWORD,
-		},
-	});
+	const createdUser = await User.findById(user._id).select(
+		"-password -refreshToken"
+	);
 
-	const mailOptions = {
-		from: process.env.EMAIL_USER,
-		to: email,
-		subject: "Welcome to Our Platform",
-		html: `
-			<h2>Hello ${fullName},</h2>
-			<p>Thank you for registering on our platform!</p>
-			<p>Please click the link below to verify your email address:</p>
-			<a href="${process.env.BASE_URL}/verify-email?email=${encodeURIComponent(
-			email
-		)}">Verify Email</a>
-			<p>If you did not create this account, please ignore this email.</p>
-		`,
-	};
-
-	try {
-		await transporter.sendMail(mailOptions);
-	} catch (error) {
-		throw new ApiError(500, "Failed to send verification email");
+	if (!createdUser) {
+		throw new ApiError(
+			500,
+			"Something went wrong while registering the user"
+		);
 	}
 
-	// Return success response
-	return res.status(200).json(
-		new ApiResponse(
-			200,
-			{ userId: user._id, email: user.email },
-			"User registered successfully. A verification link has been sent to your email."
-		)
-	);
+	return res
+		.status(200)
+		.json(
+			new ApiResponse(
+				200,
+				createdUser,
+				"User registered Successfully"
+			)
+		);
 });
+
+
+// const registerUser = asyncHandler(async (req, res) => {
+// 	const { fullName, email, username, phone, password } = req.body;
+
+// 	// Validate required fields
+// 	if (
+// 		[fullName, email, username, password, phone].some(
+// 			(field) => field?.trim() === ""
+// 		)
+// 	) {
+// 		throw new ApiError(400, "All fields are required");
+// 	}
+
+// 	// Check if the user already exists
+// 	const existedUser = await User.findOne({
+// 		$or: [{ email }, { phone }],
+// 	});
+// 	if (existedUser) {
+// 		throw new ApiError(409, "User already exists");
+// 	}
+
+// 	// Check for username conflict
+// 	const existedUsername = await User.findOne({ username });
+// 	let finalUsername = username;
+// 	if (existedUsername) {
+// 		const userCount = await User.countDocuments();
+// 		const serialNumber = userCount + 1;
+// 		finalUsername = `${username.toLowerCase()}-${serialNumber}`;
+// 	}
+
+// 	// Generate unique userId
+// 	const userCount = await User.countDocuments();
+// 	const serialNumber = userCount + 1;
+
+// 	// Create the user
+// 	const user = await User.create({
+// 		fullName,
+// 		email,
+// 		phone,
+// 		password,
+// 		username: finalUsername,
+// 		userId: `SD${serialNumber}`,
+// 		userPic: "",
+// 		gender: "",
+// 	});
+
+// 	// Send verification email
+// 	const transporter = nodemailer.createTransport({
+// 		service: "Gmail",
+// 		auth: {
+// 			user: process.env.EMAIL_USER,
+// 			pass: process.env.EMAIL_PASSWORD,
+// 		},
+// 	});
+
+// 	const mailOptions = {
+// 		from: process.env.EMAIL_USER,
+// 		to: email,
+// 		subject: "Welcome to Our Platform",
+// 		html: `
+// 			<h2>Hello ${fullName},</h2>
+// 			<p>Thank you for registering on our platform!</p>
+// 			<p>Please click the link below to verify your email address:</p>
+// 			<a href="${process.env.BASE_URL}/verify-email?email=${encodeURIComponent(
+// 			email
+// 		)}">Verify Email</a>
+// 			<p>If you did not create this account, please ignore this email.</p>
+// 		`,
+// 	};
+
+// 	try {
+// 		await transporter.sendMail(mailOptions);
+// 	} catch (error) {
+// 		throw new ApiError(500, "Failed to send verification email");
+// 	}
+
+// 	// Return success response
+// 	return res.status(200).json(
+// 		new ApiResponse(
+// 			200,
+// 			{ userId: user._id, email: user.email },
+// 			"User registered successfully. A verification link has been sent to your email."
+// 		)
+// 	);
+// });
 
 // Route 5: Login User
 const loginUser = asyncHandler(async (req, res) => {
