@@ -319,6 +319,7 @@ exports.deletePages = async (req, res) => {
 
         await Promise.all(deletionPromises);
 
+
         res.json({ message: "Pages and related documents deleted successfully" });
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -326,6 +327,105 @@ exports.deletePages = async (req, res) => {
 };
 
 
+
+// exports.getPageById = async (req, res) => {
+//     try {
+//         // Fetch all collections in the database
+//         const collections = await mongoose.connection.db.listCollections().toArray();
+
+//         // Get collection names and exclude system collections
+//         const collectionNames = collections
+//             .map((collection) => collection.name)
+//             .filter(
+//                 (name) =>
+//                     name !== "system.indexes" &&
+//                     name !== "admin" &&
+//                     name !== "local" &&
+//                     typeof name === "string"
+//             );
+
+//         const { category } = req.query;
+
+//         // Log the category and available collections to debug
+//         console.log("Provided Category:", category);
+//         console.log("Available Collections:", collectionNames);
+
+//         // Validate the category parameter
+//         if (!category || !collectionNames.includes(category)) {
+//             return res.status(400).json({
+//                 message: `Invalid or missing category. Provided category: ${category}. Available categories: ${collectionNames.join(", ")}.`,
+//             });
+//         }
+
+//         // Validate the ObjectId format
+//         const { id } = req.params;
+//         if (!mongoose.Types.ObjectId.isValid(id)) {
+//             return res.status(400).json({ message: "Invalid page ID format" });
+//         }
+
+//         // Get the dynamic model for the provided category
+//         const PageModel = getDynamicPageModel(category);
+//         if (!PageModel) {
+//             return res.status(500).json({ message: "Failed to get model for category" });
+//         }
+
+//         // Fetch the page by ID
+//         const page = await PageModel.aggregate([
+//             {
+//                 $match: {
+//                     _id: new mongoose.Types.ObjectId(id),
+//                 },
+//             },
+//             {
+//                 $addFields: {
+//                     publish: {
+//                         $ifNull: ["$publish", "$createdAt"], // Fallback to createdAt if publish is missing
+//                     },
+//                 },
+//             },
+//         ]);
+
+//         // If no page is found, return a 404
+//         if (!page || page.length === 0) {
+//             return res.status(404).json({ message: "Page not found" });
+//         }
+
+//         const pageData = page[0]; // Since aggregate returns an array, get the first element
+
+//         // Fetch related documents if applicable
+//         let relatedDocuments = [];
+//         if (Array.isArray(pageData.relatedCollections) && pageData.relatedCollections.length > 0) {
+//             for (let relation of pageData.relatedCollections) {
+//                 if (typeof relation.collectionName !== "string" || typeof relation.field !== "string") {
+//                     return res.status(400).json({ message: "Invalid relation format in relatedCollections" });
+//                 }
+
+//                 // Check if the collection name exists in the database
+//                 if (!collectionNames.includes(relation.collectionName)) {
+//                     return res.status(400).json({ message: `Invalid collection name: ${relation.collectionName}` });
+//                 }
+
+//                 // Proceed to fetch related documents
+//                 const RelatedModel = getDynamicPageModel(relation.collectionName);
+//                 if (!RelatedModel) {
+//                     return res.status(500).json({ message: `Failed to get model for related collection: ${relation.collectionName}` });
+//                 }
+
+//                 const relatedDocs = await RelatedModel.find({ [relation.field]: id }).lean();
+//                 relatedDocuments.push(...relatedDocs);
+//             }
+//         }
+
+//         // Return the page data and related documents
+//         res.status(200).json({
+//             page: pageData,
+//             relatedDocuments: relatedDocuments, // Return all related documents
+//         });
+//     } catch (err) {
+//         console.error(`Error in getPageById: ${err.message}`);
+//         res.status(500).json({ message: "Internal Server Error" });
+//     }
+// };
 
 exports.getPageById = async (req, res) => {
     try {
@@ -343,90 +443,45 @@ exports.getPageById = async (req, res) => {
                     typeof name === "string"
             );
 
-        const { category } = req.query;
-
-        // Log the category and available collections to debug
-        console.log("Provided Category:", category);
-        console.log("Available Collections:", collectionNames);
-
-        // Validate the category parameter
-        if (!category || !collectionNames.includes(category)) {
-            return res.status(400).json({
-                message: `Invalid or missing category. Provided category: ${category}. Available categories: ${collectionNames.join(", ")}.`,
-            });
-        }
-
         // Validate the ObjectId format
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ message: "Invalid page ID format" });
         }
 
-        // Get the dynamic model for the provided category
-        const PageModel = getDynamicPageModel(category);
-        if (!PageModel) {
-            return res.status(500).json({ message: "Failed to get model for category" });
-        }
+        let pageData = null;
+        let foundInCollection = null;
 
-        // Fetch the page by ID
-        const page = await PageModel.aggregate([
-            {
-                $match: {
-                    _id: new mongoose.Types.ObjectId(id),
-                },
-            },
-            {
-                $addFields: {
-                    publish: {
-                        $ifNull: ["$publish", "$createdAt"], // Fallback to createdAt if publish is missing
-                    },
-                },
-            },
-        ]);
+        // Iterate over collections to find the document
+        for (let collectionName of collectionNames) {
+            const Model = getDynamicPageModel(collectionName);
+            if (!Model) {
+                continue; // Skip if model creation fails
+            }
 
-        // If no page is found, return a 404
-        if (!page || page.length === 0) {
-            return res.status(404).json({ message: "Page not found" });
-        }
-
-        const pageData = page[0]; // Since aggregate returns an array, get the first element
-
-        // Fetch related documents if applicable
-        let relatedDocuments = [];
-        if (Array.isArray(pageData.relatedCollections) && pageData.relatedCollections.length > 0) {
-            for (let relation of pageData.relatedCollections) {
-                if (typeof relation.collectionName !== "string" || typeof relation.field !== "string") {
-                    return res.status(400).json({ message: "Invalid relation format in relatedCollections" });
-                }
-
-                // Check if the collection name exists in the database
-                if (!collectionNames.includes(relation.collectionName)) {
-                    return res.status(400).json({ message: `Invalid collection name: ${relation.collectionName}` });
-                }
-
-                // Proceed to fetch related documents
-                const RelatedModel = getDynamicPageModel(relation.collectionName);
-                if (!RelatedModel) {
-                    return res.status(500).json({ message: `Failed to get model for related collection: ${relation.collectionName}` });
-                }
-
-                const relatedDocs = await RelatedModel.find({ [relation.field]: id }).lean();
-                relatedDocuments.push(...relatedDocs);
+            const result = await Model.findById(id).lean();
+            if (result) {
+                pageData = result;
+                foundInCollection = collectionName;
+                break;
             }
         }
 
-        // Return the page data and related documents
+        // If no page is found, return a 404
+        if (!pageData) {
+            return res.status(404).json({ message: "Page not found in any collection" });
+        }
+
+        // Return the page data and its collection
         res.status(200).json({
             page: pageData,
-            relatedDocuments: relatedDocuments, // Return all related documents
+            collection: foundInCollection, // Include the collection name for reference
         });
     } catch (err) {
         console.error(`Error in getPageById: ${err.message}`);
         res.status(500).json({ message: "Internal Server Error" });
     }
-};
-
-
+};  
 
 
 exports.updatePage = async (req, res) => {
