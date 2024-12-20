@@ -27,4 +27,4 @@ jobs:
       - name: Delete old container
         run: docker rm -f backend-app-container
       - name: Run Docker Container
-        run: docker run -d -p 4000:4000 --name backend-app-container -e N3LJYI12vZcvmspS sunny01elementals/backend-app
+        run: docker run -d -p 4000:5000 --name backend-app-container -e N3LJYI12vZcvmspS sunny01elementals/backend-app
