@@ -27,4 +27,4 @@ jobs:
       - name: Delete old container
         run: docker rm -f sanatan-dharamaya-backend-container
       - name: Run Docker Container
-        run: docker run -d -p 4000:3000 --name sanatan-dharamaya-backend-container -e N3LJYI12vZcvmspS sunny01elementals/sanatan-dharamaya-backend
+        run: docker run -d -p 4000:5000 --name sanatan-dharamaya-backend-container -e N3LJYI12vZcvmspS sunny01elementals/sanatan-dharamaya-backend
