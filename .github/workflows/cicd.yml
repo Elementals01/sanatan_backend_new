@@ -25,6 +25,6 @@ jobs:
       - name: Pull image from docker hub
         run: docker pull sunny01elementals/backend-app:latest
       - name: Delete old container
-        run: docker rm -f node-app-container
+        run: docker rm -f backend-app-container
       - name: Run Docker Container
-        run: docker run -d -p 4000:4000 --name node-app-container -e N3LJYI12vZcvmspS sunny01elementals/backend-app
+        run: docker run -d -p 4000:4000 --name backend-app-container -e 'N3LJYI12vZcvmspS' sunny01elementals/backend-app
